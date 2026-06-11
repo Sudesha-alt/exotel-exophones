@@ -8,17 +8,27 @@ const EXOTEL_SID = process.env.EXOTEL_SID;
 const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
-const getUrl = () =>
-  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.exotel.com/v2_beta/Accounts/${EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
+const BASE_URL = `https://api.exotel.com/v2_beta/Accounts/${process.env.EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
 
 app.get('/debug', async (req, res) => {
   try {
-    const response = await axios.get(getUrl(), {
-      params: { InRegion: 'MP', PageSize: 50 }
+    const response = await axios.get(BASE_URL, {
+      auth: {
+        username: EXOTEL_API_KEY,
+        password: EXOTEL_API_TOKEN
+      },
+      params: {
+        InRegion: 'MP',
+        PageSize: 50
+      }
     });
     return res.json({ total: response.data.length, numbers: response.data });
   } catch (err) {
-    return res.json({ error: err.message, details: err.response?.data });
+    return res.json({
+      error: err.message,
+      status: err.response?.status,
+      details: err.response?.data
+    });
   }
 });
 
@@ -26,8 +36,15 @@ app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
 
-    const response = await axios.get(getUrl(), {
-      params: { InRegion: 'MP', PageSize: 50 }
+    const response = await axios.get(BASE_URL, {
+      auth: {
+        username: EXOTEL_API_KEY,
+        password: EXOTEL_API_TOKEN
+      },
+      params: {
+        InRegion: 'MP',
+        PageSize: 50
+      }
     });
 
     const allNumbers = response.data || [];
@@ -36,7 +53,6 @@ app.post('/exophones', async (req, res) => {
       return res.json({ text: '⚠️ No Madhya Pradesh numbers available in Exotel.' });
     }
 
-    // Shuffle and pick random
     const shuffled = allNumbers.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, count);
 
