@@ -8,22 +8,14 @@ const EXOTEL_SID = process.env.EXOTEL_SID;
 const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
-const BASE_URL = `https://api.exotel.com/v1/Accounts/${process.env.EXOTEL_SID}/IncomingPhoneNumbers.json`;
+const getBaseUrl = () =>
+  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`;
 
 app.get('/debug', async (req, res) => {
   try {
-    const response = await axios.get(BASE_URL, {
-      auth: {
-        username: EXOTEL_API_KEY,
-        password: EXOTEL_API_TOKEN
-      }
-    });
-
+    const response = await axios.get(getBaseUrl());
     const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
-
-    // Return all phones with every field visible
     return res.json({ total: allPhones.length, phones: allPhones });
-
   } catch (err) {
     return res.json({
       error: err.message,
@@ -35,19 +27,8 @@ app.get('/debug', async (req, res) => {
 
 app.get('/apitest', async (req, res) => {
   try {
-    const response = await axios.get(
-      `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`,
-      {
-        auth: {
-          username: EXOTEL_API_KEY,
-          password: EXOTEL_API_TOKEN
-        }
-      }
-    );
-    return res.json({
-      status: response.status,
-      raw: response.data
-    });
+    const response = await axios.get(getBaseUrl());
+    return res.json({ status: response.status, raw: response.data });
   } catch (err) {
     return res.json({
       error: err.message,
@@ -72,13 +53,7 @@ app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
 
-    const response = await axios.get(BASE_URL, {
-      auth: {
-        username: EXOTEL_API_KEY,
-        password: EXOTEL_API_TOKEN
-      }
-    });
-
+    const response = await axios.get(getBaseUrl());
     const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
 
     if (allPhones.length === 0) {
