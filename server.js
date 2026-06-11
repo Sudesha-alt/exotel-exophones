@@ -7,22 +7,18 @@ app.use(express.urlencoded({ extended: true }));
 const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
-const getBaseUrl = () =>
-  `https://api.exotel.com/v2_beta/Accounts/convin3/AvailablePhoneNumbers/IN/Landline`;
+const AVAILABLE_URL = `https://api.exotel.com/v2_beta/Accounts/convin3/AvailablePhoneNumbers/IN/Landline`;
+const INCOMING_URL = `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`;
 
 app.get('/debug', async (req, res) => {
   try {
-    const response = await axios.get(getBaseUrl(), {
+    const response = await axios.get(AVAILABLE_URL, {
       auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
       params: { InRegion: 'MP', PageSize: 50 }
     });
     return res.json({ total: response.data.length, numbers: response.data });
   } catch (err) {
-    return res.json({
-      error: err.message,
-      status: err.response?.status,
-      details: err.response?.data
-    });
+    return res.json({ error: err.message, status: err.response?.status, details: err.response?.data });
   }
 });
 
@@ -39,7 +35,7 @@ app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
 
-    const response = await axios.get(getBaseUrl(), {
+    const response = await axios.get(AVAILABLE_URL, {
       auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
       params: { InRegion: 'MP', PageSize: 50 }
     });
@@ -67,45 +63,6 @@ app.post('/exophones', async (req, res) => {
   }
 });
 
-app.post('/assign', async (req, res) => {
-  try {
-    const exophoneSid = req.body.sid;
-    const voiceUrl = req.body.voiceurl;
-    const smsUrl = req.body.smsurl;
-    const friendlyName = req.body.friendlyname;
-
-    if (!exophoneSid) {
-      return res.json({ text: '⚠️ Please provide the ExoPhone SID.' });
-    }
-
-    const params = new URLSearchParams();
-    if (voiceUrl) params.append('VoiceUrl', voiceUrl);
-    if (smsUrl) params.append('SMSUrl', smsUrl);
-    if (friendlyName) params.append('FriendlyName', friendlyName);
-
-    const response = await axios.put(
-      `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers/${exophoneSid}`,
-      params,
-      {
-        auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
-    );
-
-    const data = response.data;
-
-    return res.json({
-      text: `✅ ExoPhone Assigned Successfully!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url || 'N/A'}\n📋 SID: ${data.sid}`
-    });
-
-  } catch (err) {
-    console.error(err.message);
-    return res.json({
-      text: `❌ Assign failed: ${err.response?.data?.message || err.message}`
-    });
-  }
-});
-
 app.post('/purchase', async (req, res) => {
   try {
     const phoneNumber = req.body.phone_number;
@@ -120,7 +77,7 @@ app.post('/purchase', async (req, res) => {
     purchaseParams.append('PhoneNumber', phoneNumber);
 
     const purchaseResponse = await axios.post(
-      `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`,
+      INCOMING_URL,
       purchaseParams,
       {
         auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
@@ -134,10 +91,10 @@ app.post('/purchase', async (req, res) => {
     // Step 2 — Assign flow if flowsid provided
     if (flowSid && exophoneSid) {
       const assignParams = new URLSearchParams();
-      assignParams.append('VoiceUrl', `https://my.exotel.com/exoml/start/${flowSid}`);
+      assignParams.append('VoiceUrl', `https://my.exotel.com/convin3/exoml/start_voice/${flowSid}`);
 
       await axios.put(
-        `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers/${exophoneSid}`,
+        `${INCOMING_URL}/${exophoneSid}`,
         assignParams,
         {
           auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
@@ -147,13 +104,48 @@ app.post('/purchase', async (req, res) => {
     }
 
     return res.json({
-      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${purchasedNumber.phone_number}\n🏷️ Name: ${purchasedNumber.friendly_name}\n🔗 Voice URL: https://my.exotel.com/exoml/start/${flowSid}\n💰 Rental: ₹${purchasedNumber.rental_price}/month\n📋 SID: ${exophoneSid}`
+      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${purchasedNumber.phone_number}\n🏷️ Name: ${purchasedNumber.friendly_name}\n🔗 Voice URL: https://my.exotel.com/convin3/exoml/start_voice/${flowSid}\n💰 Rental: ₹${purchasedNumber.rental_price}/month\n📋 SID: ${exophoneSid}`
     });
 
   } catch (err) {
     console.error(err.message);
     return res.json({
       text: `❌ Failed: ${JSON.stringify(err.response?.data)}`
+    });
+  }
+});
+
+app.post('/assign', async (req, res) => {
+  try {
+    const exophoneSid = req.body.sid;
+    const flowSid = req.body.flowsid;
+
+    if (!exophoneSid || !flowSid) {
+      return res.json({ text: '⚠️ Please provide both sid and flowsid.' });
+    }
+
+    const assignParams = new URLSearchParams();
+    assignParams.append('VoiceUrl', `https://my.exotel.com/convin3/exoml/start_voice/${flowSid}`);
+
+    const response = await axios.put(
+      `${INCOMING_URL}/${exophoneSid}`,
+      assignParams,
+      {
+        auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+
+    const data = response.data;
+
+    return res.json({
+      text: `✅ Flow Assigned!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url}\n📋 SID: ${data.sid}`
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.json({
+      text: `❌ Assign failed: ${JSON.stringify(err.response?.data)}`
     });
   }
 });
