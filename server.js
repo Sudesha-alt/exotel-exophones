@@ -115,32 +115,45 @@ app.post('/purchase', async (req, res) => {
       return res.json({ text: '⚠️ Please provide a phone number to purchase.' });
     }
 
-    const params = new URLSearchParams();
-    params.append('PhoneNumber', phoneNumber);
-    if (flowSid) {
-      params.append('VoiceUrl', `https://my.exotel.com/exoml/start/${flowSid}`);
-    }
+    // Step 1 — Purchase the number
+    const purchaseParams = new URLSearchParams();
+    purchaseParams.append('PhoneNumber', phoneNumber);
 
-    const response = await axios.post(
+    const purchaseResponse = await axios.post(
       `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`,
-      params,
+      purchaseParams,
       {
         auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       }
     );
 
-    const data = response.data;
+    const purchasedNumber = purchaseResponse.data;
+    const exophoneSid = purchasedNumber.sid;
+
+    // Step 2 — Assign flow if flowsid provided
+    if (flowSid && exophoneSid) {
+      const assignParams = new URLSearchParams();
+      assignParams.append('VoiceUrl', `https://my.exotel.com/exoml/start/${flowSid}`);
+
+      await axios.put(
+        `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers/${exophoneSid}`,
+        assignParams,
+        {
+          auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        }
+      );
+    }
 
     return res.json({
-      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url || 'N/A'}\n💰 Rental: ₹${data.rental_price}/month\n📋 SID: ${data.sid}`
+      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${purchasedNumber.phone_number}\n🏷️ Name: ${purchasedNumber.friendly_name}\n🔗 Voice URL: https://my.exotel.com/exoml/start/${flowSid}\n💰 Rental: ₹${purchasedNumber.rental_price}/month\n📋 SID: ${exophoneSid}`
     });
 
   } catch (err) {
     console.error(err.message);
-    // Return full Exotel error details
     return res.json({
-      text: `❌ Purchase failed: ${JSON.stringify(err.response?.data)}`
+      text: `❌ Failed: ${JSON.stringify(err.response?.data)}`
     });
   }
 });
