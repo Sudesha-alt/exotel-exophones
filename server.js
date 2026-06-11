@@ -8,7 +8,7 @@ const EXOTEL_SID = process.env.EXOTEL_SID;
 const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
-const BASE_URL = `https://api.exotel.com/v2_beta/Accounts/${process.env.EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
+const BASE_URL = `https://api.exotel.com/v1/Accounts/${process.env.EXOTEL_SID}/IncomingPhoneNumbers.json`;
 
 app.get('/debug', async (req, res) => {
   try {
@@ -16,13 +16,14 @@ app.get('/debug', async (req, res) => {
       auth: {
         username: EXOTEL_API_KEY,
         password: EXOTEL_API_TOKEN
-      },
-      params: {
-        InRegion: 'MP',
-        PageSize: 50
       }
     });
-    return res.json({ total: response.data.length, numbers: response.data });
+
+    const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
+
+    // Return all phones with every field visible
+    return res.json({ total: allPhones.length, phones: allPhones });
+
   } catch (err) {
     return res.json({
       error: err.message,
@@ -40,24 +41,20 @@ app.post('/exophones', async (req, res) => {
       auth: {
         username: EXOTEL_API_KEY,
         password: EXOTEL_API_TOKEN
-      },
-      params: {
-        InRegion: 'MP',
-        PageSize: 50
       }
     });
 
-    const allNumbers = response.data || [];
+    const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
 
-    if (allNumbers.length === 0) {
-      return res.json({ text: '⚠️ No Madhya Pradesh numbers available in Exotel.' });
+    if (allPhones.length === 0) {
+      return res.json({ text: '⚠️ No exophones found in your Exotel account.' });
     }
 
-    const shuffled = allNumbers.sort(() => 0.5 - Math.random());
+    const shuffled = allPhones.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, count);
 
     const lines = selected.map((p, i) =>
-      `${i + 1}. ${p.friendly_name || 'N/A'} — ${p.phone_number}`
+      `${i + 1}. ${p.FriendlyName || 'N/A'} — ${p.PhoneNumber}`
     ).join('\n');
 
     return res.json({
