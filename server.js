@@ -33,6 +33,17 @@ app.get('/debug', async (req, res) => {
   }
 });
 
+app.get('/envcheck', (req, res) => {
+  res.json({
+    sid_set: !!EXOTEL_SID,
+    key_set: !!EXOTEL_API_KEY,
+    token_set: !!EXOTEL_API_TOKEN,
+    sid_length: EXOTEL_SID?.length,
+    key_length: EXOTEL_API_KEY?.length,
+    token_length: EXOTEL_API_TOKEN?.length
+  });
+});
+
 app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
