@@ -8,17 +8,31 @@ const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
 const getBaseUrl = () =>
-  `https://api.exotel.com/v2_beta/Accounts/convin3/AvailablePhoneNumbers/IN/Mobile`;
+  `https://api.exotel.com/v2_beta/Accounts/convin3/AvailablePhoneNumbers/IN/Landline`;
 
 app.get('/debug', async (req, res) => {
   try {
     const response = await axios.get(getBaseUrl(), {
-      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+      params: { InRegion: 'MP', PageSize: 50 }
     });
     return res.json({ total: response.data.length, numbers: response.data });
   } catch (err) {
-    return res.json({ error: err.message, status: err.response?.status, details: err.response?.data });
+    return res.json({
+      error: err.message,
+      status: err.response?.status,
+      details: err.response?.data
+    });
   }
+});
+
+app.get('/envcheck', (req, res) => {
+  res.json({
+    key_set: !!EXOTEL_API_KEY,
+    token_set: !!EXOTEL_API_TOKEN,
+    key_length: EXOTEL_API_KEY?.length,
+    token_length: EXOTEL_API_TOKEN?.length
+  });
 });
 
 app.post('/exophones', async (req, res) => {
@@ -26,13 +40,14 @@ app.post('/exophones', async (req, res) => {
     const count = parseInt(req.body.count) || 10;
 
     const response = await axios.get(getBaseUrl(), {
-      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+      params: { InRegion: 'MP', PageSize: 50 }
     });
 
     const allNumbers = response.data || [];
 
     if (allNumbers.length === 0) {
-      return res.json({ text: '⚠️ No numbers available.' });
+      return res.json({ text: '⚠️ No Madhya Pradesh Landline numbers available.' });
     }
 
     const shuffled = allNumbers.sort(() => 0.5 - Math.random());
@@ -43,7 +58,7 @@ app.post('/exophones', async (req, res) => {
     ).join('\n');
 
     return res.json({
-      text: `📞 Exophones — Madhya Pradesh (${selected.length} random numbers)\n\n${lines}`
+      text: `📞 Exophones — Madhya Pradesh Landline (${selected.length} random numbers)\n\n${lines}`
     });
 
   } catch (err) {
