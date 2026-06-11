@@ -109,14 +109,21 @@ app.post('/assign', async (req, res) => {
 app.post('/purchase', async (req, res) => {
   try {
     const phoneNumber = req.body.phone_number;
+    const flowSid = req.body.flowsid;
 
     if (!phoneNumber) {
       return res.json({ text: '⚠️ Please provide a phone number to purchase.' });
     }
 
+    const params = new URLSearchParams();
+    params.append('PhoneNumber', phoneNumber);
+    if (flowSid) {
+      params.append('VoiceUrl', `https://my.exotel.com/exoml/start/${flowSid}`);
+    }
+
     const response = await axios.post(
       `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`,
-      new URLSearchParams({ PhoneNumber: phoneNumber }),
+      params,
       {
         auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -126,7 +133,7 @@ app.post('/purchase', async (req, res) => {
     const data = response.data;
 
     return res.json({
-      text: `✅ Number Purchased Successfully!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n💰 Rental: ₹${data.rental_price}/month\n📋 SID: ${data.sid}`
+      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url || 'N/A'}\n💰 Rental: ₹${data.rental_price}/month\n📋 SID: ${data.sid}`
     });
 
   } catch (err) {
