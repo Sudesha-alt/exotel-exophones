@@ -9,13 +9,14 @@ const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
 const getBaseUrl = () =>
-  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`;
+  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.exotel.com/v2_beta/Accounts/${EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
 
 app.get('/debug', async (req, res) => {
   try {
-    const response = await axios.get(getBaseUrl());
-    const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
-    return res.json({ total: allPhones.length, phones: allPhones });
+    const response = await axios.get(getBaseUrl(), {
+      params: { InRegion: 'MP', PageSize: 50 }
+    });
+    return res.json({ total: response.data.length, numbers: response.data });
   } catch (err) {
     return res.json({
       error: err.message,
@@ -27,7 +28,9 @@ app.get('/debug', async (req, res) => {
 
 app.get('/apitest', async (req, res) => {
   try {
-    const response = await axios.get(getBaseUrl());
+    const response = await axios.get(getBaseUrl(), {
+      params: { InRegion: 'MP', PageSize: 50 }
+    });
     return res.json({ status: response.status, raw: response.data });
   } catch (err) {
     return res.json({
@@ -53,18 +56,21 @@ app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
 
-    const response = await axios.get(getBaseUrl());
-    const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
+    const response = await axios.get(getBaseUrl(), {
+      params: { InRegion: 'MP', PageSize: 50 }
+    });
 
-    if (allPhones.length === 0) {
-      return res.json({ text: '⚠️ No exophones found in your Exotel account.' });
+    const allNumbers = response.data || [];
+
+    if (allNumbers.length === 0) {
+      return res.json({ text: '⚠️ No Madhya Pradesh numbers available.' });
     }
 
-    const shuffled = allPhones.sort(() => 0.5 - Math.random());
+    const shuffled = allNumbers.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, count);
 
     const lines = selected.map((p, i) =>
-      `${i + 1}. ${p.FriendlyName || 'N/A'} — ${p.PhoneNumber}`
+      `${i + 1}. ${p.friendly_name || 'N/A'} — ${p.phone_number}`
     ).join('\n');
 
     return res.json({
