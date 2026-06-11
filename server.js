@@ -13,18 +13,11 @@ const getBaseUrl = () =>
 app.get('/debug', async (req, res) => {
   try {
     const response = await axios.get(getBaseUrl(), {
-      auth: {
-        username: EXOTEL_API_KEY,
-        password: EXOTEL_API_TOKEN
-      }
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
     });
     return res.json({ total: response.data.length, numbers: response.data });
   } catch (err) {
-    return res.json({
-      error: err.message,
-      status: err.response?.status,
-      details: err.response?.data
-    });
+    return res.json({ error: err.message, status: err.response?.status, details: err.response?.data });
   }
 });
 
@@ -33,10 +26,7 @@ app.post('/exophones', async (req, res) => {
     const count = parseInt(req.body.count) || 10;
 
     const response = await axios.get(getBaseUrl(), {
-      auth: {
-        username: EXOTEL_API_KEY,
-        password: EXOTEL_API_TOKEN
-      }
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
     });
 
     const allNumbers = response.data || [];
@@ -59,6 +49,37 @@ app.post('/exophones', async (req, res) => {
   } catch (err) {
     console.error(err.message);
     return res.json({ text: `❌ Error: ${err.message}` });
+  }
+});
+
+app.post('/purchase', async (req, res) => {
+  try {
+    const phoneNumber = req.body.phone_number;
+
+    if (!phoneNumber) {
+      return res.json({ text: '⚠️ Please provide a phone number to purchase.' });
+    }
+
+    const response = await axios.post(
+      `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`,
+      new URLSearchParams({ PhoneNumber: phoneNumber }),
+      {
+        auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+
+    const data = response.data;
+
+    return res.json({
+      text: `✅ Number Purchased Successfully!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n💰 Rental: ₹${data.rental_price}/month\n📋 SID: ${data.sid}`
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.json({
+      text: `❌ Purchase failed: ${err.response?.data?.message || err.message}`
+    });
   }
 });
 
