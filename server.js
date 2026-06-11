@@ -138,8 +138,9 @@ app.post('/purchase', async (req, res) => {
 
   } catch (err) {
     console.error(err.message);
+    // Return full Exotel error details
     return res.json({
-      text: `❌ Purchase failed: ${err.response?.data?.message || err.message}`
+      text: `❌ Purchase failed: ${JSON.stringify(err.response?.data)}`
     });
   }
 });
