@@ -33,6 +33,30 @@ app.get('/debug', async (req, res) => {
   }
 });
 
+app.get('/apitest', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`,
+      {
+        auth: {
+          username: EXOTEL_API_KEY,
+          password: EXOTEL_API_TOKEN
+        }
+      }
+    );
+    return res.json({
+      status: response.status,
+      raw: response.data
+    });
+  } catch (err) {
+    return res.json({
+      error: err.message,
+      status: err.response?.status,
+      raw: err.response?.data
+    });
+  }
+});
+
 app.get('/envcheck', (req, res) => {
   res.json({
     sid_set: !!EXOTEL_SID,
