@@ -10,6 +10,20 @@ const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 const AVAILABLE_URL = `https://api.exotel.com/v2_beta/Accounts/convin3/AvailablePhoneNumbers/IN/Landline`;
 const INCOMING_URL = `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers`;
 
+// Health check
+app.get('/', (req, res) => res.send('Exophones service running ✅'));
+
+// Env check
+app.get('/envcheck', (req, res) => {
+  res.json({
+    key_set: !!EXOTEL_API_KEY,
+    token_set: !!EXOTEL_API_TOKEN,
+    key_length: EXOTEL_API_KEY?.length,
+    token_length: EXOTEL_API_TOKEN?.length
+  });
+});
+
+// Debug — list available MP Landline numbers
 app.get('/debug', async (req, res) => {
   try {
     const response = await axios.get(AVAILABLE_URL, {
@@ -22,15 +36,7 @@ app.get('/debug', async (req, res) => {
   }
 });
 
-app.get('/envcheck', (req, res) => {
-  res.json({
-    key_set: !!EXOTEL_API_KEY,
-    token_set: !!EXOTEL_API_TOKEN,
-    key_length: EXOTEL_API_KEY?.length,
-    token_length: EXOTEL_API_TOKEN?.length
-  });
-});
-
+// Get 10 random MP Landline numbers
 app.post('/exophones', async (req, res) => {
   try {
     const count = parseInt(req.body.count) || 10;
@@ -63,6 +69,7 @@ app.post('/exophones', async (req, res) => {
   }
 });
 
+// Purchase number and assign flow
 app.post('/purchase', async (req, res) => {
   try {
     const phoneNumber = req.body.phone_number;
@@ -72,7 +79,7 @@ app.post('/purchase', async (req, res) => {
       return res.json({ text: '⚠️ Please provide a phone number to purchase.' });
     }
 
-    // Step 1 — Purchase the number
+    // Step 1 — Purchase
     const purchaseParams = new URLSearchParams();
     purchaseParams.append('PhoneNumber', phoneNumber);
 
@@ -104,7 +111,7 @@ app.post('/purchase', async (req, res) => {
     }
 
     return res.json({
-      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${purchasedNumber.phone_number}\n🏷️ Name: ${purchasedNumber.friendly_name}\n🔗 Voice URL: https://my.exotel.com/convin3/exoml/start_voice/${flowSid}\n💰 Rental: ₹${purchasedNumber.rental_price}/month\n📋 SID: ${exophoneSid}`
+      text: `✅ Number Purchased & Flow Assigned!\n\n📞 Number: ${purchasedNumber.phone_number}\n🏷️ Name: ${purchasedNumber.friendly_name}\n🔗 Voice URL: https://my.exotel.com/convin3/exoml/start_voice/${flowSid || 'N/A'}\n💰 Rental: ₹${purchasedNumber.rental_price}/month\n📋 SID: ${exophoneSid}`
     });
 
   } catch (err) {
@@ -115,6 +122,7 @@ app.post('/purchase', async (req, res) => {
   }
 });
 
+// Assign flow to existing number by phone number
 app.post('/assign', async (req, res) => {
   try {
     const phoneNumber = req.body.phone;
@@ -130,8 +138,8 @@ app.post('/assign', async (req, res) => {
     });
 
     const allNumbers = listResponse.data?.incoming_phone_numbers || [];
-    const matched = allNumbers.find(p => 
-      p.phone_number === phoneNumber || 
+    const matched = allNumbers.find(p =>
+      p.phone_number === phoneNumber ||
       p.phone_number === `+91${phoneNumber}` ||
       p.friendly_name === phoneNumber
     );
@@ -169,6 +177,7 @@ app.post('/assign', async (req, res) => {
   }
 });
 
+// Delete number by phone number
 app.post('/delete', async (req, res) => {
   try {
     const phoneNumber = req.body.phone;
@@ -195,7 +204,7 @@ app.post('/delete', async (req, res) => {
 
     const exophoneSid = matched.sid;
 
-    // Step 2 — Delete the number
+    // Step 2 — Delete
     await axios.delete(
       `${INCOMING_URL}/${exophoneSid}`,
       {
@@ -214,7 +223,5 @@ app.post('/delete', async (req, res) => {
     });
   }
 });
-
-app.get('/', (req, res) => res.send('Exophones service running ✅'));
 
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
