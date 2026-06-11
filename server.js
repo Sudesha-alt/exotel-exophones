@@ -67,6 +67,45 @@ app.post('/exophones', async (req, res) => {
   }
 });
 
+app.post('/assign', async (req, res) => {
+  try {
+    const exophoneSid = req.body.sid;
+    const voiceUrl = req.body.voiceurl;
+    const smsUrl = req.body.smsurl;
+    const friendlyName = req.body.friendlyname;
+
+    if (!exophoneSid) {
+      return res.json({ text: '⚠️ Please provide the ExoPhone SID.' });
+    }
+
+    const params = new URLSearchParams();
+    if (voiceUrl) params.append('VoiceUrl', voiceUrl);
+    if (smsUrl) params.append('SMSUrl', smsUrl);
+    if (friendlyName) params.append('FriendlyName', friendlyName);
+
+    const response = await axios.put(
+      `https://api.exotel.com/v2_beta/Accounts/convin3/IncomingPhoneNumbers/${exophoneSid}`,
+      params,
+      {
+        auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+
+    const data = response.data;
+
+    return res.json({
+      text: `✅ ExoPhone Assigned Successfully!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url || 'N/A'}\n📋 SID: ${data.sid}`
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.json({
+      text: `❌ Assign failed: ${err.response?.data?.message || err.message}`
+    });
+  }
+});
+
 app.post('/purchase', async (req, res) => {
   try {
     const phoneNumber = req.body.phone_number;
