@@ -38,7 +38,6 @@ app.get('/debug', async (req, res) => {
 
 app.post('/exophones', async (req, res) => {
   try {
-    const region = (req.body.region || 'madhya pradesh').toLowerCase();
     const count = parseInt(req.body.count) || 10;
 
     const url = `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`;
@@ -52,17 +51,12 @@ app.post('/exophones', async (req, res) => {
 
     const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
 
-    const filtered = allPhones.filter(p => {
-      const r = (p.Region || '').toLowerCase();
-      const c = (p.Circle || '').toLowerCase();
-      return r.includes(region) || c.includes(region);
-    });
-
-    if (filtered.length === 0) {
-      return res.json({ text: `⚠️ No exophones found for region: ${region}` });
+    if (allPhones.length === 0) {
+      return res.json({ text: '⚠️ No exophones found in your Exotel account.' });
     }
 
-    const shuffled = filtered.sort(() => Math.random() - 0.5);
+    // Shuffle and pick random numbers
+    const shuffled = allPhones.sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, count);
 
     const lines = selected.map((p, i) =>
@@ -70,7 +64,7 @@ app.post('/exophones', async (req, res) => {
     ).join('\n');
 
     return res.json({
-      text: `📞 Exophones — ${region.toUpperCase()} (${selected.length} random numbers)\n\n${lines}`
+      text: `📞 Exophones — Madhya Pradesh (${selected.length} random numbers)\n\n${lines}`
     });
 
   } catch (err) {
