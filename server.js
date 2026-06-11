@@ -9,7 +9,7 @@ const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
 const getUrl = () =>
-  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.in.exotel.com/v2_beta/Accounts/${EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
+  `https://${EXOTEL_API_KEY}:${EXOTEL_API_TOKEN}@api.exotel.com/v2_beta/Accounts/${EXOTEL_SID}/AvailablePhoneNumbers/IN/Mobile`;
 
 app.get('/debug', async (req, res) => {
   try {
