@@ -8,13 +8,8 @@ const EXOTEL_SID = process.env.EXOTEL_SID;
 const EXOTEL_API_KEY = process.env.EXOTEL_API_KEY;
 const EXOTEL_API_TOKEN = process.env.EXOTEL_API_TOKEN;
 
-app.post('/exophones', async (req, res) => {
+app.get('/debug', async (req, res) => {
   try {
-    const region = (req.body.region || 'madhya pradesh').toLowerCase();
-    const count = parseInt(req.body.count) || 10;
-    const status = (req.body.status || 'active').toLowerCase();
-
-    // Fetch all exophones from Exotel
     const url = `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`;
 
     const response = await axios.get(url, {
@@ -26,30 +21,57 @@ app.post('/exophones', async (req, res) => {
 
     const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
 
-    // Filter by region
+    const mapped = allPhones.map(p => ({
+      FriendlyName: p.FriendlyName,
+      PhoneNumber: p.PhoneNumber,
+      Region: p.Region,
+      Circle: p.Circle,
+      Type: p.Type
+    }));
+
+    return res.json({ total: mapped.length, phones: mapped });
+
+  } catch (err) {
+    return res.json({ error: err.message });
+  }
+});
+
+app.post('/exophones', async (req, res) => {
+  try {
+    const region = (req.body.region || 'madhya pradesh').toLowerCase();
+    const count = parseInt(req.body.count) || 10;
+
+    const url = `https://api.exotel.com/v1/Accounts/${EXOTEL_SID}/IncomingPhoneNumbers.json`;
+
+    const response = await axios.get(url, {
+      auth: {
+        username: EXOTEL_API_KEY,
+        password: EXOTEL_API_TOKEN
+      }
+    });
+
+    const allPhones = response.data?.TwilioResponse?.IncomingPhoneNumbers || [];
+
     const filtered = allPhones.filter(p => {
       const r = (p.Region || '').toLowerCase();
-      return r.includes(region);
+      const c = (p.Circle || '').toLowerCase();
+      return r.includes(region) || c.includes(region);
     });
 
     if (filtered.length === 0) {
       return res.json({ text: `⚠️ No exophones found for region: ${region}` });
     }
 
-    // Shuffle and pick random numbers
     const shuffled = filtered.sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, count);
 
-    // Format message
     const lines = selected.map((p, i) =>
-      `${i + 1}. *${p.FriendlyName || 'N/A'}* — \`${p.PhoneNumber}\``
+      `${i + 1}. ${p.FriendlyName || 'N/A'} — ${p.PhoneNumber}`
     ).join('\n');
 
-    const message = {
-      text: `📞 *Exophones — ${region.toUpperCase()} (${selected.length} random numbers)*\n\n${lines}`
-    };
-
-    return res.json(message);
+    return res.json({
+      text: `📞 Exophones — ${region.toUpperCase()} (${selected.length} random numbers)\n\n${lines}`
+    });
 
   } catch (err) {
     console.error(err.message);
