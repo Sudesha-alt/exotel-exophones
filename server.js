@@ -168,6 +168,53 @@ app.post('/assign', async (req, res) => {
     });
   }
 });
+
+app.post('/delete', async (req, res) => {
+  try {
+    const phoneNumber = req.body.phone;
+
+    if (!phoneNumber) {
+      return res.json({ text: '⚠️ Please provide a phone number to delete.' });
+    }
+
+    // Step 1 — Find ExoPhone SID by phone number
+    const listResponse = await axios.get(INCOMING_URL, {
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
+    });
+
+    const allNumbers = listResponse.data?.incoming_phone_numbers || [];
+    const matched = allNumbers.find(p =>
+      p.phone_number === phoneNumber ||
+      p.phone_number === `+91${phoneNumber}` ||
+      p.friendly_name === phoneNumber
+    );
+
+    if (!matched) {
+      return res.json({ text: `⚠️ No ExoPhone found for number: ${phoneNumber}` });
+    }
+
+    const exophoneSid = matched.sid;
+
+    // Step 2 — Delete the number
+    await axios.delete(
+      `${INCOMING_URL}/${exophoneSid}`,
+      {
+        auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
+      }
+    );
+
+    return res.json({
+      text: `🗑️ ExoPhone Deleted Successfully!\n\n📞 Number: ${matched.phone_number}\n🏷️ Name: ${matched.friendly_name}\n📋 SID: ${exophoneSid}`
+    });
+
+  } catch (err) {
+    console.error(err.message);
+    return res.json({
+      text: `❌ Delete failed: ${JSON.stringify(err.response?.data)}`
+    });
+  }
+});
+
 app.get('/', (req, res) => res.send('Exophones service running ✅'));
 
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
