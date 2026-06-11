@@ -117,13 +117,32 @@ app.post('/purchase', async (req, res) => {
 
 app.post('/assign', async (req, res) => {
   try {
-    const exophoneSid = req.body.sid;
+    const phoneNumber = req.body.phone;
     const flowSid = req.body.flowsid;
 
-    if (!exophoneSid || !flowSid) {
-      return res.json({ text: '⚠️ Please provide both sid and flowsid.' });
+    if (!phoneNumber || !flowSid) {
+      return res.json({ text: '⚠️ Please provide both phone number and flow SID.' });
     }
 
+    // Step 1 — Find ExoPhone SID by phone number
+    const listResponse = await axios.get(INCOMING_URL, {
+      auth: { username: EXOTEL_API_KEY, password: EXOTEL_API_TOKEN }
+    });
+
+    const allNumbers = listResponse.data?.incoming_phone_numbers || [];
+    const matched = allNumbers.find(p => 
+      p.phone_number === phoneNumber || 
+      p.phone_number === `+91${phoneNumber}` ||
+      p.friendly_name === phoneNumber
+    );
+
+    if (!matched) {
+      return res.json({ text: `⚠️ No ExoPhone found for number: ${phoneNumber}` });
+    }
+
+    const exophoneSid = matched.sid;
+
+    // Step 2 — Assign flow
     const assignParams = new URLSearchParams();
     assignParams.append('VoiceUrl', `https://my.exotel.com/convin3/exoml/start_voice/${flowSid}`);
 
@@ -139,7 +158,7 @@ app.post('/assign', async (req, res) => {
     const data = response.data;
 
     return res.json({
-      text: `✅ Flow Assigned!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url}\n📋 SID: ${data.sid}`
+      text: `✅ Flow Assigned!\n\n📞 Number: ${data.phone_number}\n🏷️ Name: ${data.friendly_name}\n🔗 Voice URL: ${data.voice_url}\n📋 SID: ${exophoneSid}`
     });
 
   } catch (err) {
@@ -149,7 +168,6 @@ app.post('/assign', async (req, res) => {
     });
   }
 });
-
 app.get('/', (req, res) => res.send('Exophones service running ✅'));
 
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
